@@ -28,7 +28,6 @@ G = nx.DiGraph([
 ])
 real = "A,C,E,C,B,G,E,C,E,E,E,E,B,C,B,C,E,C,E,C,C,C,C,C,B,G,E"
 logs = "E,B,E,E,E,E,E,B,B,E,E,B,E"
-logged_nodes = set(logs)
 log_nodes = re.split(r',', logs)
 real_nodes = re.split(r',', real)
 

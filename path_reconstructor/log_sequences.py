@@ -2,27 +2,6 @@ import re
 import networkx as nx
 import random
 
-G = nx.DiGraph([
-    ('A', 'B'),
-    ('B', 'G'),
-    ('G', 'E'),
-    ('E', 'E'),
-    ('A', 'C'),
-    ('C', 'E'),
-    ('A', 'D'),
-    ('D', 'F'),
-    ('F', 'D')
-]) # Processing ...
-
-real = "A,C,E,C,B,G,E,C,E,E,E,E,B,C,B,C,E,C,E,C,C,C,C,C,B,G,E"
-# B and E are logged.
-logs = "E,B,E,E,E,E,E,B,B,E,E,B,E"
-
-# Reconstruct paths
-nodes = re.split(r',', logs)
-real_nodes = re.split(r',', real)
-logged_nodes = set(nodes)
-
 def cut_executed_nodes(g: nx.DiGraph, path: list) -> list:
     """Remove the part of an execution path that was already executed.
     
@@ -82,7 +61,8 @@ def is_path_direct(g: nx.DiGraph, path: list) -> bool:
     return path[dir_change_index:]
 
 def find_execution_path(g: nx.DiGraph, u: nx.DiGraph,
-        node1: str, node2: str, last_dif_node: str) -> list:
+        node1: str, node2: str, last_dif_node: str,
+        logged_nodes: str) -> list:
     """Return a possible execution path between two nodes.
     
     The function first lists all possible paths that connect two nodes and
@@ -159,12 +139,13 @@ def reconstruct_path(g: nx.DiGraph, logs: list, source: str) -> list:
     Returns:
         Reconstructed execution path as a list of nodes."""
     u = g.to_undirected()
+    logged_nodes = set(logs)
     reconstruction = [source]
     last_dif_node = source
     for node in logs[0:]:
         last_dif_node = find_last_dif(reconstruction, node)
         reconstruction += find_execution_path(
-            g, u, reconstruction[-1], node, last_dif_node)[1:]
+            g, u, reconstruction[-1], node, last_dif_node, logged_nodes)[1:]
     return reconstruction
 
 def match_reconstruction(real: list, reconstructed: list) -> list:
@@ -226,11 +207,3 @@ def evaluate_recall(real: list, matched: list) -> float:
     Returns:
         Recall"""
     return get_true_positive(real, matched) / len(matched)
-
-p = reconstruct_path(G, nodes, 'A')
-p2 = match_reconstruction(real_nodes, p)
-
-print(real_nodes)
-print(p2)
-print(evaluate_precision(real_nodes, p))
-print(evaluate_recall(real_nodes, p2))
