@@ -1,6 +1,13 @@
-import re
 import networkx as nx
 import random
+
+from itertools import islice
+def k_shortest_paths(G, source, target, k=7, weight=None):
+    try:
+        return list(
+            islice(nx.shortest_simple_paths(G, source, target, weight=weight), k))
+    except:
+        return [[]]
 
 def cut_executed_nodes(g: nx.DiGraph, path: list) -> list:
     """Remove the part of an execution path that was already executed.
@@ -20,7 +27,9 @@ def cut_executed_nodes(g: nx.DiGraph, path: list) -> list:
         Shortened execution path.
     """
     for index, node in enumerate(path):
-        shortened_paths = nx.all_simple_paths(g, node, path[-1])
+        shortened_paths = k_shortest_paths(g, node, path[-1])
+        if len(shortened_paths) > 10:
+            shortened_paths = shortened_paths[0:10]
         if shortened_paths:
             return path[index:]
     print("No ancestor node.")
@@ -89,16 +98,14 @@ def find_execution_path(g: nx.DiGraph, u: nx.DiGraph,
         node1 = last_dif_node
     # Case 1: Direct link between the two nodes.
     is_direct = True
-    paths_view = nx.all_simple_paths(g, node1, node2)
-    paths = []
-    for p in paths_view:
-        paths.append(p)
+    paths = k_shortest_paths(g, node1, node2)
+    if len(paths) > 10:
+        paths = paths[0:10]
     # Case 2: No direct link, must go back in the tree.
     if not paths:
         is_direct = False
-        paths_view = nx.all_simple_paths(u, node1, node2)
-        paths = []
-        for p in paths_view:
+        paths = k_shortest_paths(u, node1, node2)
+        for p in paths:
             short_path = is_path_direct(g, p)
             if short_path:
                 paths.append(short_path)
@@ -108,6 +115,8 @@ def find_execution_path(g: nx.DiGraph, u: nx.DiGraph,
         if not (set(path[1:-1]) & logged_nodes):
             cleaned_paths.append(path)
     # Select a possible path.
+    if not cleaned_paths:
+        return []
     if is_direct:
         return random.choice(cleaned_paths)
     else:
@@ -144,9 +153,13 @@ def reconstruct_path(g: nx.DiGraph, logs: list, source: str) -> list:
     last_dif_node = source
     for node in logs[0:]:
         last_dif_node = find_last_dif(reconstruction, node)
-        reconstruction += find_execution_path(
+        new_path = find_execution_path(
             g, u, reconstruction[-1], node, last_dif_node, logged_nodes)[1:]
-    return reconstruction
+        if new_path:
+            reconstruction += new_path
+        else:
+            reconstruction += [node]
+    return reconstruction[1:]
 
 def match_reconstruction(real: list, reconstructed: list) -> list:
     """Match a reconstructed execution path to the real execution path by
@@ -161,7 +174,9 @@ def match_reconstruction(real: list, reconstructed: list) -> list:
     matched = []
     r_index = 0
     for node in real:
-        if node == reconstructed[r_index]:
+        if r_index == len(reconstructed):
+            matched.append(' ')
+        elif node == reconstructed[r_index]:
             matched.append(node)
             r_index += 1
         else:
